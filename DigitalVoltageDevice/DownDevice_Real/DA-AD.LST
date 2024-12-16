@@ -1,0 +1,13 @@
+C51 COMPILER V9.54   DA_AD                                                                 11/22/2024 22:17:30 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE DA_AD
+OBJECT MODULE PLACED IN .\output\DA-AD.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE DA-AD.C OPTIMIZE(8,SPEED) BROWSE INCDIR(.\AD_IIC;.\user;.\lcd12864;.\Seg
+                    -ment;.\output;.\uart) DEBUG OBJECTEXTEND TABS(2) OBJECT(.\output\DA-AD.obj)
+
+line level    source
+
+*** ERROR C318 OF DA-AD.C: can't open file 'DA-AD.C'
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  1 ERROR(S)

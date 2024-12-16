@@ -1,0 +1,79 @@
+C51 COMPILER V9.54   SEGMENTS                                                              12/15/2024 18:13:38 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE SEGMENTS
+OBJECT MODULE PLACED IN .\output\segments.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE Segment\segments.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\AD_IIC;.\user;.\lcd
+                    -12864;.\Segment;.\output;.\uart;.\Hardware) DEBUG OBJECTEXTEND PRINT(.\segments.lst) TABS(2) OBJECT(.\output\segments.ob
+                    -j)
+
+line level    source
+
+   1          #include <reg52.h>
+   2          #include "segments.h"
+   3          
+   4          sbit LSA=P2^2;
+   5          sbit LSB=P2^3;
+   6          sbit LSC=P2^4;
+   7          unsigned char code smgduan[10]={0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f};//显示0~9的值
+   8          
+   9          //延时子函数
+  10          void Delay(unsigned int xms)
+  11          {
+  12   1        unsigned char i, j;
+  13   1        while(xms--)
+  14   1        {
+  15   2          i = 2;
+  16   2          j = 239;
+  17   2          do
+  18   2          {
+  19   3            while (--j);
+  20   3          } while (--i);
+  21   2        }
+  22   1      }
+  23          
+  24          //数码管显示
+  25          void DigDisplay(unsigned char addr, unsigned char number)
+  26          {
+  27   1          switch(addr)   //位选，选择点亮的数码管，
+  28   1          {
+  29   2            case(0):
+  30   2              LSA=0;LSB=0;LSC=0; P0=smgduan[number]|0x80;break;//显示第0位
+  31   2            case(1):
+  32   2              LSA=1;LSB=0;LSC=0; P0=smgduan[number];break;//显示第1位
+  33   2            case(2):
+  34   2              LSA=0;LSB=1;LSC=0; P0=smgduan[number]|0x80;break;//显示第2位
+  35   2            case(3):
+  36   2              LSA=1;LSB=1;LSC=0; P0=smgduan[number];break;//显示第3位
+  37   2            case(4):
+  38   2              LSA=0;LSB=0;LSC=1; P0=smgduan[number];break;//显示第4位
+  39   2            case(5):
+  40   2              LSA=1;LSB=0;LSC=1; P0=smgduan[number]|0x80;break;//显示第5位
+  41   2            case(6):
+  42   2              LSA=0;LSB=1;LSC=1; P0=smgduan[number];break;//显示第6位
+  43   2            case(7):
+  44   2              LSA=1;LSB=1;LSC=1; P0=smgduan[number];break;//显示第7位 
+  45   2          }
+  46   1      //    P0=smgduan[number];//发送段码
+  47   1          Delay(1); //间隔一段时间扫描  
+  48   1          P0=0x00;//消隐
+  49   1      }
+  50          
+  51          
+  52          
+
+C51 COMPILER V9.54   SEGMENTS                                                              12/15/2024 18:13:38 PAGE 2   
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    143    ----
+   CONSTANT SIZE    =     10    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

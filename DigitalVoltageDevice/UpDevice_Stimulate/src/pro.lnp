@@ -1,0 +1,5 @@
+"main.obj",
+"st7565.obj",
+"UART.obj",
+"beep.obj" 
+TO "pro" 

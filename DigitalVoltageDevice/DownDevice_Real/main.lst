@@ -1,0 +1,156 @@
+C51 COMPILER V9.54   MAIN                                                                  12/15/2024 18:13:38 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\output\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE user\main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\AD_IIC;.\user;.\lcd12864;.
+                    -\Segment;.\output;.\uart;.\Hardware) DEBUG OBJECTEXTEND PRINT(.\main.lst) TABS(2) OBJECT(.\output\main.obj)
+
+line level    source
+
+   1          //接线说明:
+   2          //SCL---P20
+   3          //SDA---P21
+   4          //如需修改接线,请在I2C.c文件中修改
+   5          #include <reg52.h>
+   6          #include "I2C.H"
+   7          #include "segments.h"
+   8          #include "tim2.h"
+   9          #include "main.h"
+  10          #include "key.h"
+  11          #include "beep.h"
+  12          #include "UART.h"
+  13          
+  14          
+  15          /*
+  16          typedef enum
+  17          {
+  18            KEY_Event_Null,        // 无事件
+  19            KEY_Event_SingleClick, // 单击
+  20            KEY_Event_LongPress,   // 长按
+  21            KEY_Event_DoubleClick, // 双击
+  22            KEY_Event_Shake,       // 抖动
+  23          } KEY_Event_TypeDef;
+  24          */
+  25          //void UART_SendNumber(int num);
+  26          
+  27          unsigned long xdata LedOut[4]; //电压数码管显示值
+  28          unsigned long xdata UedOut[4]; //电压报警上下限
+  29          unsigned int  ADC_Vallue = 0;//电压原始值
+  30          char  ADC_DATA[2]; //电压发送值
+  31          unsigned int  ADC_Warning = 0; //电压警告变量
+  32          //u8 H_limit = 45; //上限初始值
+  33          //u8 L_limit = 10; //下限初始值
+  34          void main(void)
+  35          { 
+  36   1       P0 = 0x00;  // 清空段码，关闭显示
+  37   1       P1 |= 0x03; //初始化IO口为高电平
+  38   1       Init_timer2();
+  39   1       UsartInit();
+  40   1       while(1)
+  41   1       {/********以下AD-DA处理*************/
+  42   2      
+  43   2         ADC_Vallue = ADC_Read();
+  44   2         UedOut[0] = H_limit/10;
+  45   2         UedOut[1] = H_limit%10;
+  46   2         UedOut[2] = L_limit/10;
+  47   2         UedOut[3] = L_limit%10;
+  48   2         DigDisplay(0,UedOut[0]);
+  49   2         DigDisplay(1,UedOut[1]);
+  50   2         DigDisplay(2,UedOut[2]);
+  51   2         DigDisplay(3,UedOut[3]);
+  52   2         
+  53   2         DigDisplay(4,LedOut[0]);
+  54   2         DigDisplay(5,LedOut[1]);
+C51 COMPILER V9.54   MAIN                                                                  12/15/2024 18:13:38 PAGE 2   
+
+  55   2         DigDisplay(6,LedOut[2]);
+  56   2         DigDisplay(7,LedOut[3]);
+  57   2         
+  58   2         
+  59   2      //   UART_SendNumber(ADC_Vallue); //0
+  60   2      
+  61   2       }  
+  62   1      }
+  63          
+  64          //定时器中断函数
+  65          void Timer2() interrupt 5   //定时器2是5号中断
+  66          {    
+  67   1           
+  68   1           static u8 count = 1; //电压采样计数
+  69   1           static u8 count1 = 1; //beep采样计数
+  70   1           
+  71   1           TF2=0;
+  72   1              KEY_ReadStateMachine(&KeyCfg1);
+  73   1              KEY_ReadStateMachine(&KeyCfg2);
+  74   1            
+  75   1      
+  76   1                   // 根据按键事件执行相应操作
+  77   1            if (KeyCfg1.KEY_Event == KEY_Event_SingleClick) {
+  78   2      //                  sendFrame(&H_limit,1);
+  79   2                        H_limit +=3;
+  80   2      
+  81   2      
+  82   2            } else if (KeyCfg1.KEY_Event == KEY_Event_DoubleClick) {
+  83   2      //                sendFrame(&L_limit,1);
+  84   2                      H_limit-= 3;
+  85   2                      
+  86   2                // 处理按键1双击事件
+  87   2            } else if (KeyCfg1.KEY_Event == KEY_Event_LongPress) {
+  88   2                        H_limit = 30;
+  89   2      //                  sendFrame(&H_limit,1);
+  90   2                        
+  91   2            }
+  92   1      
+  93   1            if (KeyCfg2.KEY_Event == KEY_Event_SingleClick) {
+  94   2                        L_limit +=3;
+  95   2            } else if (KeyCfg2.KEY_Event == KEY_Event_DoubleClick) {
+  96   2                        L_limit-= 3;
+  97   2            } else if (KeyCfg2.KEY_Event == KEY_Event_LongPress) {
+  98   2                        L_limit = 20;
+  99   2            }
+ 100   1          
+ 101   1           if(count== 51 |count>51)
+ 102   1           {
+ 103   2             ADC_DATA[0] = ADC_Vallue/100;
+ 104   2             ADC_DATA[1] = ADC_Vallue%100;
+ 105   2             LedOut[0]=ADC_Vallue%10000/1000;
+ 106   2             LedOut[1]=ADC_Vallue%1000/100;
+ 107   2             LedOut[2]=ADC_Vallue%100/10;
+ 108   2             LedOut[3]=ADC_Vallue%10;
+ 109   2             ADC_Warning  = LedOut[1] *10 + LedOut[2];
+ 110   2             sendFrame(ADC_DATA, 2);
+ 111   2             count = 0;
+ 112   2           }
+ 113   1            if(count1== 200 |count1>200)
+ 114   1           {
+ 115   2             beep_1(ADC_Warning);
+ 116   2             beep_2(ADC_Warning);      
+C51 COMPILER V9.54   MAIN                                                                  12/15/2024 18:13:38 PAGE 3   
+
+ 117   2             count1 = 0;
+ 118   2           }
+ 119   1           count++;
+ 120   1           count1++;
+ 121   1      }
+ 122          
+ 123          
+ 124          
+ 125          
+ 126          
+ 127          
+ 128          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    609    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     32    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      8    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,158 @@
+C51 COMPILER V9.54   MAIN                                                                  12/09/2024 17:21:31 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\程序) DEBUG OBJECTEXTEND TABS(
+                    -2)
+
+line level    source
+
+   1          #include<reg52.h>
+   2          #include"st7565.h"
+   3          #include "UART.h"
+   4          #include "beep.h"
+   5          
+   6          
+   7          //---声明一个全局变量---//
+   8          typedef unsigned char u8;
+   9          void Delay10ms(unsigned int c);
+  10          void Lcd_draw_point(uchar x,uchar y);
+  11          void uchar_to_string(unsigned char value, char* str_value, unsigned int size);
+  12          /*******************************************************************************
+  13          * 函 数 名         : main
+  14          * 函数功能       : 主函数
+  15          * 输    入         : 无
+  16          * 输    出         : 无
+  17          *************************r******************************************************/
+  18          
+  19          int ADC_Vallue[3];
+  20          
+  21          void main()
+  22          {
+  23   1        unsigned char i;
+  24   1        unsigned char j = 0;
+  25   1        int y = 0;
+  26   1        int b2 = 0;
+  27   1        int b3 = 0;
+  28   1        int VOLT = 0;
+  29   1        unsigned char k = 0;
+  30   1        unsigned char  h = 0;
+  31   1        int draw_volt = 0;
+  32   1        char str_volt[4] = {0}; // 需要足够大的数组以容纳数字和结束符
+  33   1        UsartInit();  
+  34   1        Lcd12864_Init();
+  35   1        Lcd12864_ClearScreen();
+  36   1        Lcd12864_Write16CnCHAR(0, 6, "报警");
+  37   1        Lcd12864_Write8CnCHAR(33  ,6,"2.3" );
+  38   1        Lcd12864_Write16CnCHAR(68, 6, "电压");
+  39   1      
+  40   1      
+  41   1        while(1)
+  42   1        {
+  43   2        
+  44   2              beep_3(ADC_Vallue[3]);
+  45   2              
+  46   2              for(k = 0;k<30;k++)
+  47   2              if (frameReceived)
+  48   2              {
+  49   3              
+  50   3                  frameReceived = 0;  // 清除接收标记
+  51   3      
+  52   3                  // 处理接收到的数据，数据存储在 buffer[2] ~ buffer[bufferIndex-2]
+  53   3                  if (bufferIndex > 3)  // 确保帧数据至少包含帧头、帧尾和一个数据字节
+  54   3                  {
+C51 COMPILER V9.54   MAIN                                                                  12/09/2024 17:21:31 PAGE 2   
+
+  55   4                    b2 = (int)(buffer[2]);
+  56   4                    b3 = (int)(buffer[3]);
+  57   4                    y =  (int)((b2 *100 +b3)/10);
+  58   4                    ADC_Vallue[1] = ADC_Vallue[0];
+  59   4                    ADC_Vallue[0] = y;
+  60   4                    ADC_Vallue[3] = (ADC_Vallue[0] - ADC_Vallue[1])*2;
+  61   4                    VOLT = y*0.9215;
+  62   4                    Lcd_draw_point(j,VOLT);
+  63   4                    if(y==51)
+  64   4                    {
+  65   5                       y = 50;
+  66   5                    }
+  67   4                    uchar_to_string((unsigned char)y, str_volt,4); // 将 unsigned char 转换为字符串
+  68   4                    Lcd12864_Write8CnCHAR(98,6,str_volt);
+  69   4                    
+  70   4                    j++;
+  71   4                  }
+  72   3      
+  73   3                  // 重置缓冲区索引
+  74   3                  bufferIndex = 0;
+  75   3              }
+  76   2              
+  77   2      
+  78   2      
+  79   2        }
+  80   1      }
+*** WARNING C280 IN LINE 23 OF main.c: 'i': unreferenced local variable
+  81          
+  82          /*******************************************************************************
+  83          * 函 数 名         : Delay10ms
+  84          * 函数功能       : 延时函数，延时10ms
+  85          * 输    入         : 无
+  86          * 输    出         : 无
+  87          *******************************************************************************/
+  88          
+  89          void Delay10ms(unsigned int c)   //误差 0us
+  90          {
+  91   1          unsigned char a,b;
+  92   1          for(;c>0;c--)
+  93   1              for(b=38;b>0;b--)
+  94   1                  for(a=130;a>0;a--);
+  95   1      }
+  96          
+  97          
+  98          void Lcd_draw_point(uchar x,uchar y)
+  99          {
+ 100   1          if (x > 128 || y > 64)
+ 101   1            return;
+ 102   1          LcdSt7565_WriteCmd(0xB0 + (y / 8)); //设置Y坐标，具体可以看清屏函数里面的说明
+ 103   1          LcdSt7565_WriteCmd(0x10 + ((x >> 4) & 0x0F));   //设置X坐标，具体可以看清屏函数里面的说明
+ 104   1          LcdSt7565_WriteCmd(0x00 + (x & 0x0F));
+ 105   1          
+ 106   1          LcdSt7565_WriteData(0x1 << (y % 8));  //如果设置背景为白色时，清屏选择0XFF
+ 107   1      }
+ 108          
+ 109          /*
+ 110          void Delay10ms(unsigned int c)   //误差 0us
+ 111          {
+ 112              unsigned char a,b;
+ 113              for(;c>0;c--)
+ 114                  for(b=38;b>0;b--)
+ 115                      for(a=130;a>0;a--);
+C51 COMPILER V9.54   MAIN                                                                  12/09/2024 17:21:31 PAGE 3   
+
+ 116          }
+ 117          
+ 118          */
+ 119          
+ 120          void uchar_to_string(unsigned char value, char* str_value, unsigned int size) {
+ 121   1          if (size < 3) { // 检查空间是否足够
+ 122   2              str_value[0] = '\0'; // 赋值空字符串以避免意外
+ 123   2              return;
+ 124   2          }
+ 125   1          str_value[0] = (value / 10) + '0'; // 获取十位字符
+ 126   1          str_value[1] = '.'; // 获取个位字符
+ 127   1          str_value[2] = ((value) % 10) + '0'; // 获取个位字符
+ 128   1          str_value[3] = '\0'; // 添加结束符
+ 129   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    454    ----
+   CONSTANT SIZE    =     18    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      6      26
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

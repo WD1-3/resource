@@ -1,0 +1,231 @@
+C51 COMPILER V9.54   KEY                                                                   12/15/2024 18:13:39 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE KEY
+OBJECT MODULE PLACED IN .\output\key.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE Hardware\key.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\AD_IIC;.\user;.\lcd1286
+                    -4;.\Segment;.\output;.\uart;.\Hardware) DEBUG OBJECTEXTEND PRINT(.\key.lst) TABS(2) OBJECT(.\output\key.obj)
+
+line level    source
+
+   1          #include "key.h"
+   2          #include "stdio.h"
+   3          #include <reg52.h>
+   4          
+   5          /**************************************************************************************************** 
+   6          *                             长按、单击、双击定义
+   7          * 长按事件：任何大于 KEY_LONG_PRESS_TIME 
+   8          * 单击事件：按下时间不超过 KEY_LONG_PRESS_TIME 且 释放后 KEY_WAIT_DOUBLE_TIME 内无再次按下的操作
+   9          * 双击事件：俩次短按时间间隔小于KEY_WAIT_DOUBLE_TIME，俩次短按操作合并为一次双击事件。
+  10          * 特殊说明：
+  11          *          1.短按和长按时间间隔小于 KEY_WAIT_DOUBLE_TIME，响应一次单击和长按事件，不响应双击事件
+  12          *          2.连续2n次短按，且时间间隔小于 KEY_WAIT_DOUBLE_TIME，响应为n次双击
+  13          *          3.连续2n+1次短按，且时间间隔小于 KEY_WAIT_DOUBLE_TIME，且最后一次KEY_WAIT_DOUBLE_TIME内无操作，
+  14          *       响应为n次双击 和 一次单击事件
+  15          ****************************************************************************************************/
+  16          #define KEY_LONG_PRESS_TIME    50 // 20ms*50 = 1s
+  17          #define KEY_WAIT_DOUBLE_TIME   25 // 20ms*25 = 500ms
+  18          
+  19          #define KEY_PRESSED_LEVEL      0  // 按键按下是电平为低
+  20          
+  21          sbit KEY_1 = P1^1;
+  22          sbit KEY_2 = P1^2;
+  23          /**************************************************************************************************** 
+  24          *                             局部函数定义
+  25          ****************************************************************************************************/
+  26          static KEY_PinLevel_TypeDef KEY_ReadPin1(void);   // 按键读取按键的电平函数
+  27          static KEY_PinLevel_TypeDef KEY_ReadPin2(void);   // 按键读取按键的电平函数
+  28          static void KEY_GetAction_PressOrRelease(KEY_Configure_TypeDef *KeyCfg); // 获取按键是按下还是释放，保存到
+             -结构体
+  29          
+  30          /**************************************************************************************************** 
+  31          *                             全局变量
+  32          ****************************************************************************************************/
+  33          // KEY_Configure_TypeDef KeyCfg={   
+  34          //    0,            //按键长按计数
+  35          //    KEY_Action_Release,   //虚拟当前IO电平，按下1，抬起0
+  36          //    KEY_Status_Idle,        //按键状态
+  37          //    KEY_Event_Null,         //按键事件
+  38          //    KEY_ReadPin             //读IO电平函数
+  39          // };
+  40          
+  41          KEY_Configure_TypeDef KeyCfg1 = {   
+  42              0,            
+  43              KEY_Action_Release,   
+  44              KEY_Status_Idle,        
+  45              KEY_Event_Null,         
+  46              KEY_ReadPin1            
+  47          };
+  48          
+  49          KEY_Configure_TypeDef KeyCfg2 = {   
+  50              0,            
+  51              KEY_Action_Release,   
+  52              KEY_Status_Idle,        
+  53              KEY_Event_Null,         
+C51 COMPILER V9.54   KEY                                                                   12/15/2024 18:13:39 PAGE 2   
+
+  54              KEY_ReadPin2            
+  55          };
+  56          /**************************************************************************************************** 
+  57          *                             函数定义
+  58          ****************************************************************************************************/
+  59          // 按键读取按键的电平函数，更具实际情况修改
+  60          static KEY_PinLevel_TypeDef KEY_ReadPin1(void)
+  61          {
+  62   1          return (KEY_PinLevel_TypeDef)KEY_1;
+  63   1      }
+  64          
+  65          static KEY_PinLevel_TypeDef KEY_ReadPin2(void)
+  66          {
+  67   1          return (KEY_PinLevel_TypeDef)KEY_2;
+  68   1      }
+  69          // 获取按键是按下还是释放，保存到结构体
+  70          static void KEY_GetAction_PressOrRelease(KEY_Configure_TypeDef *KeyCfg)
+  71          {
+  72   1          if(KeyCfg->KEY_ReadPin_Fcn() == KEY_PRESSED_LEVEL)
+  73   1          {
+  74   2              KeyCfg->KEY_Action = KEY_Action_Press;
+  75   2          }
+  76   1          else
+  77   1          {
+  78   2              KeyCfg->KEY_Action =  KEY_Action_Release;
+  79   2          }
+  80   1      }
+  81          
+  82          
+  83          /**************************************************************************************************** 
+  84          *                             读取按键状态机
+  85          ****************************************************************************************************/
+  86          void KEY_ReadStateMachine(KEY_Configure_TypeDef *KeyCfg)
+  87          {
+  88   1          KEY_GetAction_PressOrRelease(KeyCfg);
+  89   1          
+  90   1          switch(KeyCfg->KEY_Status)
+  91   1          {
+  92   2              case KEY_Status_Idle:
+  93   2                  if(KeyCfg->KEY_Action == KEY_Action_Press)
+  94   2                  {
+  95   3                      KeyCfg->KEY_Status = KEY_Status_Debounce;
+  96   3                      KeyCfg->KEY_Event = KEY_Event_Null;
+  97   3                  }
+  98   2                  else
+  99   2                  {
+ 100   3                      KeyCfg->KEY_Status = KEY_Status_Idle;
+ 101   3                      KeyCfg->KEY_Event = KEY_Event_Null;
+ 102   3                  }
+ 103   2                  break;
+ 104   2                  
+ 105   2              case KEY_Status_Debounce:
+ 106   2                  if(KeyCfg->KEY_Action == KEY_Action_Press)
+ 107   2                  {
+ 108   3                      KeyCfg->KEY_Status = KEY_Status_ConfirmPress;
+ 109   3                      KeyCfg->KEY_Event = KEY_Event_Null;
+ 110   3                  }
+ 111   2                  else
+ 112   2                  {
+ 113   3                      KeyCfg->KEY_Status = KEY_Status_Idle;
+ 114   3                      KeyCfg->KEY_Event = KEY_Event_Null;
+ 115   3                  }
+C51 COMPILER V9.54   KEY                                                                   12/15/2024 18:13:39 PAGE 3   
+
+ 116   2                  break;  
+ 117   2      
+ 118   2              case KEY_Status_ConfirmPress:
+ 119   2                  if( (KeyCfg->KEY_Action == KEY_Action_Press) && ( KeyCfg->KEY_Count >= KEY_LONG_PRESS_TIME))
+ 120   2                  {
+ 121   3                      KeyCfg->KEY_Status = KEY_Status_ConfirmPressLong;
+ 122   3                      KeyCfg->KEY_Event = KEY_Event_Null;
+ 123   3                      KeyCfg->KEY_Count = 0;
+ 124   3                  }
+ 125   2                  else if( (KeyCfg->KEY_Action == KEY_Action_Press) && (KeyCfg->KEY_Count < KEY_LONG_PRESS_TIME)
+             -)
+ 126   2                  {
+ 127   3                      KeyCfg->KEY_Count++;
+ 128   3                      KeyCfg->KEY_Status = KEY_Status_ConfirmPress;
+ 129   3                      KeyCfg->KEY_Event = KEY_Event_Null;
+ 130   3                  }
+ 131   2                  else
+ 132   2                  {
+ 133   3                      KeyCfg->KEY_Count = 0;
+ 134   3                      KeyCfg->KEY_Status = KEY_Status_WaiteAgain;
+ 135   3                      KeyCfg->KEY_Event = KEY_Event_Null;
+ 136   3                  }
+ 137   2                  break;  
+ 138   2                  
+ 139   2              case KEY_Status_ConfirmPressLong:
+ 140   2                  if(KeyCfg->KEY_Action == KEY_Action_Press) 
+ 141   2                  {
+ 142   3                      KeyCfg->KEY_Status = KEY_Status_ConfirmPressLong;
+ 143   3                      KeyCfg->KEY_Event = KEY_Event_Null;
+ 144   3                      KeyCfg->KEY_Count = 0;
+ 145   3                  }
+ 146   2                  else
+ 147   2                  {
+ 148   3                      KeyCfg->KEY_Status = KEY_Status_Idle;
+ 149   3                      KeyCfg->KEY_Event = KEY_Event_LongPress;
+ 150   3                      KeyCfg->KEY_Count = 0;
+ 151   3                  }
+ 152   2                  break;  
+ 153   2                  
+ 154   2              case KEY_Status_WaiteAgain:
+ 155   2                  if((KeyCfg->KEY_Action != KEY_Action_Press) && ( KeyCfg->KEY_Count >= KEY_WAIT_DOUBLE_TIME))
+ 156   2                  {
+ 157   3                      KeyCfg->KEY_Count = 0;
+ 158   3                      KeyCfg->KEY_Status = KEY_Status_Idle;  
+ 159   3                      KeyCfg->KEY_Event = KEY_Event_SingleClick;
+ 160   3                  }
+ 161   2                  else if((KeyCfg->KEY_Action != KEY_Action_Press) && ( KeyCfg->KEY_Count < KEY_WAIT_DOUBLE_TIME
+             -))
+ 162   2                  {
+ 163   3                      KeyCfg->KEY_Count ++;
+ 164   3                      KeyCfg->KEY_Status = KEY_Status_WaiteAgain;
+ 165   3                      KeyCfg->KEY_Event = KEY_Event_Null;
+ 166   3                  }
+ 167   2                  else
+ 168   2                  {
+ 169   3                      KeyCfg->KEY_Count = 0;
+ 170   3                      KeyCfg->KEY_Status = KEY_Status_SecondPress;
+ 171   3                      KeyCfg->KEY_Event = KEY_Event_Null;
+ 172   3                  }
+ 173   2                  break;    
+ 174   2              case KEY_Status_SecondPress:
+ 175   2                  if( (KeyCfg->KEY_Action == KEY_Action_Press) && ( KeyCfg->KEY_Count >= KEY_LONG_PRESS_TIME))
+C51 COMPILER V9.54   KEY                                                                   12/15/2024 18:13:39 PAGE 4   
+
+ 176   2                  {
+ 177   3                      KeyCfg->KEY_Status = KEY_Status_ConfirmPressLong;
+ 178   3                      KeyCfg->KEY_Event = KEY_Event_SingleClick;
+ 179   3                      KeyCfg->KEY_Count = 0;
+ 180   3                  }
+ 181   2                  else if( (KeyCfg->KEY_Action == KEY_Action_Press) && ( KeyCfg->KEY_Count < KEY_LONG_PRESS_TIME
+             -))
+ 182   2                  {
+ 183   3                      KeyCfg->KEY_Count ++;
+ 184   3                      KeyCfg->KEY_Status = KEY_Status_SecondPress;
+ 185   3                      KeyCfg->KEY_Event = KEY_Event_Null;
+ 186   3                  }
+ 187   2                  else 
+ 188   2                  {
+ 189   3                      KeyCfg->KEY_Count = 0;
+ 190   3                      KeyCfg->KEY_Status = KEY_Status_Idle;
+ 191   3                      KeyCfg->KEY_Event = KEY_Event_DoubleClick;
+ 192   3                  }
+ 193   2                  break;  
+ 194   2              default:
+ 195   2                  break;
+ 196   2          }
+ 197   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    560    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     16       6
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

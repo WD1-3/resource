@@ -1,0 +1,4 @@
+"I2C.obj",
+"DA-AD.obj" 
+TO "PCF8591" 
+RAMSIZE(256) 
